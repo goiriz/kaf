@@ -1,0 +1,16 @@
+# Binaries
+/kaf
+bin/
+dist/
+
+# Kafka Local Server
+/kafka_server/
+/tmp/kraft-combined-logs/
+
+# IDEs
+.idea/
+.vscode/
+
+# Go
+vendor/
+*.log
