@@ -7,15 +7,27 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/goiriz/kaf/internal/config"
 	"github.com/goiriz/kaf/internal/kafka"
 	"github.com/goiriz/kaf/internal/ui"
-	"github.com/goiriz/kaf/internal/config"
 	"github.com/goiriz/kaf/internal/ui/common"
 	"github.com/goiriz/kaf/internal/ui/pages"
 	"github.com/spf13/pflag"
 )
 
-var Version = "1.0.0"
+var Version = "dev"
+
+func getVersion() string {
+	if Version != "dev" {
+		return Version
+	}
+
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		return info.Main.Version
+	}
+
+	return Version
+}
 
 func runSetupWizard(cfg *config.Config) config.Context {
 	m := pages.NewSetupModel(cfg)
@@ -24,41 +36,30 @@ func runSetupWizard(cfg *config.Config) config.Context {
 		fmt.Printf("Error running setup wizard: %v\n", err)
 		os.Exit(1)
 	}
-	
+
 	// Reload config to get the newly saved context
 	newCfg, _ := common.LoadConfig()
 	*cfg = *newCfg
-	
+
 	if cfg.CurrentContext != "" {
 		return cfg.Contexts[cfg.CurrentContext]
 	}
-	var Version = "dev"
+	return config.Context{}
+}
 
-	func getVersion() string {
-		if Version != "dev" {
-			return Version
-		}
+func main() {
+	broker := pflag.StringP("broker", "b", "", "Kafka broker address(es), comma-separated")
+	contextName := pflag.StringP("context", "c", "", "Use a specific context from config")
+	enableWrite := pflag.Bool("write", false, "Enable write mode (allows destructive actions)")
+	isProduction := pflag.BoolP("production", "p", false, "Force production safety interlocks")
+	version := pflag.Bool("version", false, "Show version information")
+	help := pflag.BoolP("help", "h", false, "Show help message")
+	pflag.Parse()
 
-		if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
-			return info.Main.Version
-		}
-
-		return Version
+	if *version {
+		fmt.Printf("kaf %s\n", getVersion())
+		return
 	}
-
-	func main() {
-		broker := pflag.StringP("broker", "b", "", "Kafka broker address(es), comma-separated")
-		contextName := pflag.StringP("context", "c", "", "Use a specific context from config")
-		enableWrite := pflag.Bool("write", false, "Enable write mode (allows destructive actions)")
-		isProduction := pflag.BoolP("production", "p", false, "Force production safety interlocks")
-		version := pflag.Bool("version", false, "Show version information")
-		help := pflag.BoolP("help", "h", false, "Show help message")
-		pflag.Parse()
-
-		if *version {
-			fmt.Printf("kaf %s\n", getVersion())
-			return
-		}
 
 	cfg, _ := common.LoadConfig()
 	common.InitLogger(cfg.LogPath, cfg.LogMaxSizeMB)
@@ -96,7 +97,7 @@ func runSetupWizard(cfg *config.Config) config.Context {
 	} else if envBrokers := os.Getenv("KAFKA_BROKERS"); envBrokers != "" && len(activeContext.Brokers) == 0 {
 		activeContext.Brokers = strings.Split(envBrokers, ",")
 	}
-	
+
 	if *enableWrite {
 		activeContext.WriteEnabled = true
 	}
@@ -111,11 +112,11 @@ func runSetupWizard(cfg *config.Config) config.Context {
 
 	client := kafka.NewClient(&activeContext)
 	defer client.Close()
-	
+
 	model := ui.NewModel(cfg, client)
 
 	p := tea.NewProgram(&model, tea.WithAltScreen())
-	
+
 	defer func() {
 		if r := recover(); r != nil {
 			common.Log("CRASH: %v\n%s", r, string(debug.Stack()))
