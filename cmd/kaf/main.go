@@ -32,23 +32,33 @@ func runSetupWizard(cfg *config.Config) config.Context {
 	if cfg.CurrentContext != "" {
 		return cfg.Contexts[cfg.CurrentContext]
 	}
-	os.Exit(0)
-	return config.Context{}
-}
+	var Version = "dev"
 
-func main() {
-	broker := pflag.StringP("broker", "b", "", "Kafka broker address(es), comma-separated")
-	contextName := pflag.StringP("context", "c", "", "Use a specific context from config")
-	enableWrite := pflag.Bool("write", false, "Enable write mode (allows destructive actions)")
-	isProduction := pflag.BoolP("production", "p", false, "Force production safety interlocks")
-	version := pflag.Bool("version", false, "Show version information")
-	help := pflag.BoolP("help", "h", false, "Show help message")
-	pflag.Parse()
+	func getVersion() string {
+		if Version != "dev" {
+			return Version
+		}
 
-	if *version {
-		fmt.Printf("kaf %s\n", Version)
-		return
+		if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+			return info.Main.Version
+		}
+
+		return Version
 	}
+
+	func main() {
+		broker := pflag.StringP("broker", "b", "", "Kafka broker address(es), comma-separated")
+		contextName := pflag.StringP("context", "c", "", "Use a specific context from config")
+		enableWrite := pflag.Bool("write", false, "Enable write mode (allows destructive actions)")
+		isProduction := pflag.BoolP("production", "p", false, "Force production safety interlocks")
+		version := pflag.Bool("version", false, "Show version information")
+		help := pflag.BoolP("help", "h", false, "Show help message")
+		pflag.Parse()
+
+		if *version {
+			fmt.Printf("kaf %s\n", getVersion())
+			return
+		}
 
 	cfg, _ := common.LoadConfig()
 	common.InitLogger(cfg.LogPath, cfg.LogMaxSizeMB)
