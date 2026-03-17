@@ -16,12 +16,16 @@
 ## Quick Start
 
 ### Installation
-Standard Go install:
+
+#### Pre-built Binaries (Linux, Windows, macOS)
+Download the latest binary for your platform from the [Releases](https://github.com/goiriz/kaf/releases) page.
+
+#### Go Install
 ```bash
 go install github.com/goiriz/kaf/cmd/kaf@latest
 ```
 
-Or build from source:
+#### From Source
 ```bash
 make static
 sudo cp kaf /usr/local/bin/
