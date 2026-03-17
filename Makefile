@@ -1,8 +1,8 @@
 BINARY_NAME=kaf
-VERSION=1.0.0
-BUILD_FLAGS=-ldflags="-s -w"
+BUILD_FLAGS=-ldflags="-s -w -X main.Version=$(shell git describe --tags --always || echo dev)"
+STATIC_FLAGS=-tags "netgo,osusergo" -ldflags="-s -w -extldflags '-static' -X main.Version=$(shell git describe --tags --always || echo dev)"
 
-.PHONY: all build test clean static lint help
+.PHONY: all build test clean static lint help check
 
 all: test build
 
@@ -10,7 +10,12 @@ build:
 	go build $(BUILD_FLAGS) -o $(BINARY_NAME) ./cmd/kaf
 
 static:
-	CGO_ENABLED=0 go build $(BUILD_FLAGS) -o $(BINARY_NAME) ./cmd/kaf
+	CGO_ENABLED=0 go build $(STATIC_FLAGS) -o $(BINARY_NAME) ./cmd/kaf
+	@$(MAKE) check
+
+check:
+	@file $(BINARY_NAME)
+	@ldd $(BINARY_NAME) 2>&1 | grep "not a dynamic executable" || (echo "Warning: Binary is still dynamic!" && exit 1)
 
 test:
 	go test -v ./...
